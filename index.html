@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Simulador de Lógica Proposicional</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; background:#f0f0f0; }
+  input { font-size: 16px; width: 60%; padding:5px; margin-bottom:10px;}
+  button { font-size: 16px; margin:2px; padding:5px 10px; }
+  table { border-collapse: collapse; margin-top: 10px; width: 100%; }
+  th, td { border: 1px solid #333; text-align: center; padding:5px; font-weight:bold; }
+  .V { color: green; }
+  .F { color: red; }
+  .ERRO { color: black; }
+  .operadores { margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<h2>Simulador de Lógica Proposicional</h2>
+
+<input id="expressao" placeholder="Digite a expressão lógica aqui..." />
+
+<div class="operadores">
+  <button onclick="addOp('¬')">¬</button>
+  <button onclick="addOp('∧')">∧</button>
+  <button onclick="addOp('∨')">∨</button>
+  <button onclick="addOp('→')">→</button>
+  <button onclick="addOp('↔')">↔</button>
+  <button onclick="addOp('(')">(</button>
+  <button onclick="addOp(')')">)</button>
+  <button onclick="document.getElementById('expressao').value=''">Limpar</button>
+</div>
+
+<table id="tabela"></table>
+
+<script>
+const input = document.getElementById('expressao');
+input.addEventListener('input', atualizarTabela);
+
+function addOp(op){
+    input.value += op;
+    atualizarTabela();
+}
+
+function atualizarTabela(){
+    const expr = input.value;
+    const tabela = document.getElementById('tabela');
+    tabela.innerHTML = '';
+
+    if(expr.trim() === '') return;
+
+    // Detecta proposições (letras)
+    const propsSet = new Set();
+    for(const c of expr){
+        if(/[a-zA-Z]/.test(c)) propsSet.add(c);
+    }
+    const props = Array.from(propsSet).sort();
+    if(props.length === 0) return;
+
+    const n = props.length;
+    const total = Math.pow(2, n);
+
+    // Cabeçalho
+    let head = '<tr>';
+    for(const p of props) head += `<th>${p}</th>`;
+    head += '<th>Resultado</th></tr>';
+    tabela.innerHTML += head;
+
+    // Linhas
+    for(let i=0;i<total;i++){
+        const valores = {};
+        const linha = [];
+        for(let j=0;j<n;j++){
+            const rep = Math.pow(2,n-j-1);
+            const val = ((i/rep)%2<1);
+            valores[props[j]] = val;
+            linha.push(val ? 'V' : 'F');
+        }
+        let res = '';
+        try{ res = avaliarExpr(expr,valores)?'V':'F'; } 
+        catch(e){ res='ERRO'; }
+        linha.push(res);
+
+        let tr = '<tr>';
+        for(const v of linha){
+            let cls = (v==='V')?'V':(v==='F')?'F':'ERRO';
+            tr += `<td class="${cls}">${v}</td>`;
+        }
+        tr += '</tr>';
+        tabela.innerHTML += tr;
+    }
+}
+
+// Avaliador simples com substituição
+function avaliarExpr(expr, valores){
+    expr = expr.replace(/\s+/g,'');
+    for(const p in valores){
+        expr = expr.replaceAll(p, valores[p]?'true':'false');
+    }
+    expr = expr.replaceAll('¬','!').replaceAll('∧','&&').replaceAll('∨','||')
+               .replaceAll('→','<=') // simplificação para JS
+               .replaceAll('↔','=='); // simplificação
+    return evalJS(expr);
+}
+
+// Função de avaliação segura
+function evalJS(s){
+    // Substituindo IMPL (a → b) = !a || b
+    s = s.replace(/([tf])<=([tf])/g,(m,p1,p2)=>`(!${p1}||${p2})`);
+    return eval(s);
+}
+</script>
+
+</body>
+</html>
